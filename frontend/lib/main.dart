@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -10,58 +9,78 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        title: 'Flutter Demo',
-        theme: ThemeData(
-          // This is the theme of your application.
-          //
-          // TRY THIS: Try running your application with "flutter run". You'll see
-          // the application has a purple toolbar. Then, without quitting the app,
-          // try changing the seedColor in the colorScheme below to Colors.green
-          // and then invoke "hot reload" (save your changes or press the "hot
-          // reload" button in a Flutter-supported IDE, or press "r" if you used
-          // the command line to start the app).
-          //
-          // Notice that the counter didn't reset back to zero; the application
-          // state is not lost during the reload. To reset the state, use hot
-          // restart instead.
-          //
-          // This works for code too, not just values: Most code changes can be
-          // tested with just a hot reload.
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          useMaterial3: true,
+      title: 'Memory Lane App',
+      theme: ThemeData(
+        scaffoldBackgroundColor: Color(0xFF0f0f1f),
+        colorScheme: ColorScheme.dark(
+          primary: Color(0xFF3f3f6a),
+          secondary: Color(0xFF61618f),
+          background: Color(0xFF0f0f1f),
+          surface: Color(0xFF22223c),
+          onPrimary: Color(0xFFd5d5e2),
+          onSecondary: Color(0xFFadadc7),
+          onBackground: Color(0xFFd5d5e2),
+          onSurface: Color(0xFF8686ac),
         ),
-        home: MyHomePage());
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Color(0xFF3f3f6a),
+            foregroundColor: Color(0xFFd5d5e2),
+            padding: EdgeInsets.symmetric(vertical: 14, horizontal: 28),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Color(0xFF22223c),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: Color(0xFF61618f)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Color(0xFF8686ac), width: 2),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          hintStyle: TextStyle(color: Color(0xFFadadc7)),
+          labelStyle: TextStyle(color: Color(0xFFd5d5e2)),
+        ),
+      ),
+      home: LoginScreen(),
+    );
   }
 }
 
-class MyHomePage extends StatefulWidget {
+class LoginScreen extends StatefulWidget {
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _LoginScreenState createState() => _LoginScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  String _text = '';
-  Future<void> fetchAPI() async {
-    try {
-      final response =
-          await http.get(Uri.parse('http://10.0.2.2:5000/api/data'));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        setState(() {
-          _text = data['data'].toString();
-        });
-      } else {
-        setState(() {
-          _text = response.body;
-        });
-      }
-    } catch (e) {
+class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  String _message = '';
+
+  Future<void> login() async {
+    final response = await http.post(
+      Uri.parse('http://10.0.2.2:5000/api/login'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'username': _usernameController.text,
+        'password': _passwordController.text,
+      }),
+    );
+
+    if (response.statusCode == 200) {
       setState(() {
-        _text = e.toString();
+        _message = "Login successful!";
+      });
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (context) => HomeScreen()));
+    } else {
+      setState(() {
+        _message = "Invalid credentials. Try again.";
       });
     }
   }
@@ -70,28 +89,139 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text("CS 348 Project - Stage 1"),
-      ),
-      body: Center(
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          title: Text("Login")),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            ElevatedButton(
-              onPressed: () {
-                fetchAPI();
-              },
-              child: Text("Press to fetch data from backend:"),
+          children: [
+            TextField(
+              controller: _usernameController,
+              decoration: InputDecoration(labelText: "Username"),
+              style:
+                  TextStyle(color: Theme.of(context).colorScheme.onBackground),
+            ),
+            SizedBox(height: 10),
+            TextField(
+              controller: _passwordController,
+              decoration: InputDecoration(labelText: "Password"),
+              obscureText: true,
+              style:
+                  TextStyle(color: Theme.of(context).colorScheme.onBackground),
             ),
             SizedBox(height: 20),
-            Text(_text),
+            ElevatedButton(
+              onPressed: login,
+              child: Text("Login"),
+            ),
+            SizedBox(height: 10),
+            Text(_message, style: TextStyle(color: Colors.redAccent)),
+            TextButton(
+              onPressed: () {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => RegisterScreen()));
+              },
+              child: Text("Don't have an account? Register",
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onBackground)),
+            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class RegisterScreen extends StatefulWidget {
+  @override
+  _RegisterScreenState createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  String _message = '';
+
+  Future<void> register() async {
+    final response = await http.post(
+      Uri.parse('http://10.0.2.2:5000/api/users'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'username': _usernameController.text,
+        'email': _emailController.text,
+        'password': _passwordController.text,
+      }),
+    );
+
+    if (response.statusCode == 201) {
+      setState(() {
+        _message = "Registration successful! Please login.";
+      });
+      Navigator.pop(context);
+    } else {
+      setState(() {
+        _message = "Error: ${jsonDecode(response.body)['error']}";
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          title: Text("Register")),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TextField(
+              controller: _usernameController,
+              decoration: InputDecoration(labelText: "Username"),
+              style:
+                  TextStyle(color: Theme.of(context).colorScheme.onBackground),
+            ),
+            SizedBox(height: 10),
+            TextField(
+              controller: _emailController,
+              decoration: InputDecoration(labelText: "Email"),
+              style:
+                  TextStyle(color: Theme.of(context).colorScheme.onBackground),
+            ),
+            SizedBox(height: 10),
+            TextField(
+              controller: _passwordController,
+              decoration: InputDecoration(labelText: "Password"),
+              obscureText: true,
+              style:
+                  TextStyle(color: Theme.of(context).colorScheme.onBackground),
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: register,
+              child: Text("Register"),
+            ),
+            SizedBox(height: 10),
+            Text(_message, style: TextStyle(color: Colors.redAccent)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class HomeScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Home")),
+      body: Center(
+        child: Text("Welcome to Memory Lane!",
+            style:
+                TextStyle(color: Theme.of(context).colorScheme.onBackground)),
       ),
     );
   }
