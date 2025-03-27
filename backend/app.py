@@ -112,20 +112,27 @@ def check_auth():
 def update_user(user_id):
     data = request.json
     db.session.execute(
-        "CALL UpdateUser(:user_id, :username, :email)",
+        "CALL UpdateUser(:user_id, :username, :email, @status)",
         {
             "user_id": user_id,
             "username": data.get("username"),
             "email": data.get("email"),
         },
     )
+
+    status = db.session.execute("SELECT @status").scalar()
+    if status == 404:
+        return jsonify({"error": "User not found"}), 404
     db.session.commit()
     return jsonify({"message": "User updated!"}), 200
 
 
 @app.route("/api/users/<int:user_id>", methods=["DELETE"])
 def remove_user(user_id):
-    db.session.execute("CALL RemoveUser(:user_id)", {"user_id": user_id})
+    db.session.execute("CALL RemoveUser(:user_id, @status)", {"user_id": user_id})
+    status = db.session.execute("SELECT @status").scalar()
+    if status == 404:
+        return jsonify({"error": "User not found"}), 404
     db.session.commit()
     return jsonify({"message": "User removed!"}), 200
 
@@ -147,7 +154,12 @@ def add_comment():
 
 @app.route("/api/comments/<int:comment_id>", methods=["DELETE"])
 def remove_comment(comment_id):
-    db.session.execute("CALL RemoveComment(:comment_id)", {"comment_id": comment_id})
+    db.session.execute(
+        "CALL RemoveComment(:comment_id, @status)", {"comment_id": comment_id}
+    )
+    status = db.session.execute("SELECT @status").scalar()
+    if status == 404:
+        return jsonify({"error": "Comment not found"}), 404
     db.session.commit()
     return jsonify({"message": "Comment removed!"}), 200
 
@@ -204,7 +216,10 @@ def get_tags_of_photo(photo_id):
 
 @app.route("/api/photos/<int:photo_id>", methods=["DELETE"])
 def delete_photo(photo_id):
-    db.session.execute("CALL DeletePhoto(:photo_id)", {"photo_id": photo_id})
+    db.session.execute("CALL DeletePhoto(:photo_id, @status)", {"photo_id": photo_id})
+    status = db.session.execute("SELECT @status").scalar()
+    if status == 404:
+        return jsonify({"error": "Photo not found"}), 404
     db.session.commit()
     return jsonify({"message": "Photo deleted!"}), 200
 
@@ -224,11 +239,46 @@ def add_tag():
 def remove_tag():
     data = request.json
     db.session.execute(
-        "CALL RemoveTag(:photo_id, :tagged_user)",
+        "CALL RemoveTag(:photo_id, :tagged_user, @status)",
         {"photo_id": data["photo_id"], "tagged_user": data["tagged_user"]},
     )
+    status = db.session.execute("SELECT @status").scalar()
+    if status == 404:
+        return jsonify({"error": "Tag not found"}), 404
     db.session.commit()
     return jsonify({"message": "Tag removed!"}), 200
+
+
+@app.route("/api/photos/nearby", methods=["GET"])
+def get_nearby_photos():
+    data = request.json
+    result = db.session.execute(
+        """
+        CALL GetNearbyPhotos(:latitude, :longitude, :radius)
+        """,
+        {
+            "latitude": data["latitude"],
+            "longitude": data["longitude"],
+            "radius": data["radius"],
+            # need to provide default val from flutter if no radius provided
+        },
+    )
+
+    photos = result.fetchall()
+    return jsonify(
+        [
+            {
+                "photo_id": row[0],
+                "user_id": row[1],
+                "photo_url": row[2],
+                "latitude": float(row[3]),
+                "longitude": float(row[4]),
+                "timestamp": row[5].isoformat(),
+                "distance_km": float(row[6]),
+            }
+            for row in photos
+        ]
+    )
 
 
 if __name__ == "__main__":
