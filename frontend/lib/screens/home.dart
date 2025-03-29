@@ -1,15 +1,50 @@
 import 'package:flutter/material.dart';
+import 'package:trial_flutter/screens/widgets/photo.dart';
+import 'display_photo.dart';
+import 'profile.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int ind = 0;
+
+  final List<Widget> _pages = [
+    DisplayPhoto(),
+    CameraScreen(),
+    ProfileScreen(),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Photos"),
+      body: _pages[ind],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: ind,
         backgroundColor: Theme.of(context).colorScheme.surface,
-      ),
-      body: Center(
-        child: Text("Memory Lane!!!"),
+        selectedItemColor: Theme.of(context).colorScheme.primary,
+        unselectedItemColor: Theme.of(context).colorScheme.onSurface,
+        onTap: (index) {
+          setState(() {
+            ind = index;
+          });
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: "Home",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.add),
+            label: "Upload photo",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: "Profile",
+          )
+        ],
       ),
     );
   }

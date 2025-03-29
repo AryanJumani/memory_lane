@@ -1,10 +1,10 @@
-from flask import Flask, jsonify, request, session
+from flask import Flask, jsonify, request, session, send_from_directory
 from flask_cors import CORS
 from database import db, Users, Photos, Comments, Tags
 from flask_session import Session
 import os
 from dotenv import load_dotenv
-
+from sqlalchemy import text
 
 load_dotenv()
 
@@ -46,14 +46,23 @@ def get_user(user_id):
 
 @app.route("/api/photos", methods=["POST"])
 def upload_photo():
-    data = request.json
+    user_id = request.form.get("user_id")
+    latitude = request.form.get("latitude")
+    longitude = request.form.get("longitude")
+    photo_file = request.files.get("photo")
+
+    if not user_id or not photo_file:
+        return jsonify({"error": "Missing user ID or photo file"}), 400
+    filename = f"user_{user_id}_{photo_file.filename}"
+    filepath = os.path.join("uploads", filename)
+    photo_file.save(filepath)
     db.session.execute(
-        "CALL UploadPhoto(:user_id, :photo_url, :latitude, :longitude)",
+        text("CALL UploadPhoto(:user_id, :photo_url, :latitude, :longitude)"),
         {
-            "user_id": data["user_id"],
-            "photo_url": data["photo_url"],
-            "latitude": data.get("latitude"),
-            "longitude": data.get("longitude"),
+            "user_id": user_id,
+            "photo_url": filepath,
+            "latitude": latitude,
+            "longitude": longitude,
         },
     )
     db.session.commit()
@@ -63,16 +72,21 @@ def upload_photo():
 @app.route("/api/users", methods=["POST"])
 def add_user():
     data = request.json
-    db.session.execute(
-        "CALL AddUser(:username, :email, :password_hash)",
-        {
-            "username": data["username"],
-            "email": data["email"],
-            "password_hash": data["password"],
-        },
-    )
-    db.session.commit()
-    return jsonify({"message": "User added!"}), 201
+    try:
+        db.session.execute(
+            text("CALL AddUser(:username, :email, :password_hash)"),
+            {
+                "username": data["username"],
+                "email": data["email"],
+                "password_hash": data["password"],
+            },
+        )
+        db.session.commit()
+        return jsonify({"message": "User added!"}), 201
+    except Exception as e:
+        db.session.rollback()
+        print("Registration error:", e)
+        return jsonify({"error": "Internal server error" + data}), 500
 
 
 @app.route("/api/login", methods=["POST"])
@@ -112,7 +126,7 @@ def check_auth():
 def update_user(user_id):
     data = request.json
     db.session.execute(
-        "CALL UpdateUser(:user_id, :username, :email, @status)",
+        text("CALL UpdateUser(:user_id, :username, :email, @status)"),
         {
             "user_id": user_id,
             "username": data.get("username"),
@@ -129,7 +143,7 @@ def update_user(user_id):
 
 @app.route("/api/users/<int:user_id>", methods=["DELETE"])
 def remove_user(user_id):
-    db.session.execute("CALL RemoveUser(:user_id, @status)", {"user_id": user_id})
+    db.session.execute(text("CALL RemoveUser(:user_id, @status)"), {"user_id": user_id})
     status = db.session.execute("SELECT @status").scalar()
     if status == 404:
         return jsonify({"error": "User not found"}), 404
@@ -141,7 +155,7 @@ def remove_user(user_id):
 def add_comment():
     data = request.json
     db.session.execute(
-        "CALL AddComment(:photo_id, :user_id, :comment)",
+        text("CALL AddComment(:photo_id, :user_id, :comment)"),
         {
             "photo_id": data["photo_id"],
             "user_id": data["user_id"],
@@ -155,7 +169,7 @@ def add_comment():
 @app.route("/api/comments/<int:comment_id>", methods=["DELETE"])
 def remove_comment(comment_id):
     db.session.execute(
-        "CALL RemoveComment(:comment_id, @status)", {"comment_id": comment_id}
+        text("CALL RemoveComment(:comment_id, @status)"), {"comment_id": comment_id}
     )
     status = db.session.execute("SELECT @status").scalar()
     if status == 404:
@@ -183,9 +197,19 @@ def get_comments_of_photo(photo_id):
     )
 
 
+@app.route("/uploads/<path:filename>")
+def get_photo(filename):
+    return send_from_directory("uploads", filename)
+
+
 @app.route("/api/photos/user/<int:user_id>", methods=["GET"])
 def get_photos_of_user(user_id):
-    photos = Photos.query.filter_by(user_id=user_id).all()
+    photos = (
+        db.session.query(Photos, Users)
+        .join(Users, Photos.user_id == Users.user_id)
+        .filter(Photos.user_id == user_id)
+        .all()
+    )
     if not photos:
         return jsonify({"message": "No photos found for this user."}), 200
 
@@ -194,11 +218,12 @@ def get_photos_of_user(user_id):
             {
                 "photo_id": p.photo_id,
                 "photo_url": p.photo_url,
-                "latitude": p.latitude,
-                "longitude": p.longitude,
-                "timestamp": p.timestamp,
+                "latitude": float(p.latitude) if p.latitude else None,
+                "longitude": float(p.longitude) if p.longitude else None,
+                "timestamp": p.timestamp.isoformat(),
+                "username": u.username,
             }
-            for p in photos
+            for p, u in photos
         ]
     )
 
@@ -216,7 +241,9 @@ def get_tags_of_photo(photo_id):
 
 @app.route("/api/photos/<int:photo_id>", methods=["DELETE"])
 def delete_photo(photo_id):
-    db.session.execute("CALL DeletePhoto(:photo_id, @status)", {"photo_id": photo_id})
+    db.session.execute(
+        text("CALL DeletePhoto(:photo_id, @status)"), {"photo_id": photo_id}
+    )
     status = db.session.execute("SELECT @status").scalar()
     if status == 404:
         return jsonify({"error": "Photo not found"}), 404
@@ -228,7 +255,7 @@ def delete_photo(photo_id):
 def add_tag():
     data = request.json
     db.session.execute(
-        "CALL AddTag(:photo_id, :tagged_user)",
+        text("CALL AddTag(:photo_id, :tagged_user)"),
         {"photo_id": data["photo_id"], "tagged_user": data["tagged_user"]},
     )
     db.session.commit()
@@ -239,7 +266,7 @@ def add_tag():
 def remove_tag():
     data = request.json
     db.session.execute(
-        "CALL RemoveTag(:photo_id, :tagged_user, @status)",
+        text("CALL RemoveTag(:photo_id, :tagged_user, @status)"),
         {"photo_id": data["photo_id"], "tagged_user": data["tagged_user"]},
     )
     status = db.session.execute("SELECT @status").scalar()
@@ -253,9 +280,11 @@ def remove_tag():
 def get_nearby_photos():
     data = request.json
     result = db.session.execute(
-        """
+        text(
+            """
         CALL GetNearbyPhotos(:latitude, :longitude, :radius)
-        """,
+        """
+        ),
         {
             "latitude": data["latitude"],
             "longitude": data["longitude"],

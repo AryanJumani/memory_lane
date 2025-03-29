@@ -15,7 +15,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String _message = '';
 
   Future<void> register() async {
-    if (_confirmPwd.text == _passwordController.text) {
+    if (_confirmPwd.text != _passwordController.text) {
       setState(() {
         _message = "Passwords don't match";
       });
@@ -32,14 +32,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
 
     if (response.statusCode == 201) {
-      setState(() => _message = "Registration successful! Please login.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Registration successful! Login."),
+        ),
+      );
       Navigator.pop(context);
     } else {
+      String errorMessage = "Registration failed.";
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded.containsKey("error")) {
+          errorMessage = decoded["error"];
+        }
+      } on Exception catch (e) {
+        _message = e.toString();
+      }
       setState(() {
-        final error = jsonDecode(response.body)['error'] == Null
-            ? "Registration failed."
-            : jsonDecode(response.body);
-        _message = "Error: $error";
+        _message += "Error: $errorMessage";
       });
     }
   }
@@ -78,6 +88,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             TextField(
               controller: _confirmPwd,
               decoration: InputDecoration(labelText: "Confirm Password"),
+              obscureText: true,
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             ),
             SizedBox(height: 20),
