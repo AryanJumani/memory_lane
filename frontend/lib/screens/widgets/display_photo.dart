@@ -2,7 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'widgets/ImageList.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'ImageList.dart';
 
 class DisplayPhoto extends StatefulWidget {
   const DisplayPhoto({super.key});
@@ -17,7 +18,22 @@ class _DisplayPhotoState extends State<DisplayPhoto> {
   @override
   void initState() {
     super.initState();
-    photos = getPhotos('1'); // TODO: replace with proper user id later
+    _loadPhotos();
+  }
+
+  void _loadPhotos() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt('user_id');
+    if (userId != null) {
+      setState(() {
+        photos = getPhotos('$userId');
+      });
+    } else {
+      print("User ID not found in SharedPreferences");
+      setState(() {
+        photos = Future.value([]);
+      });
+    }
   }
 
   Future<List<Map<String, dynamic>>> getPhotos(String userId) async {

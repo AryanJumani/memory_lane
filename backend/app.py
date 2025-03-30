@@ -38,9 +38,16 @@ def get_user(user_id):
     user = Users.query.get(user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404
-
-    return jsonify(
-        {"user_id": user.user_id, "username": user.username, "email": user.email}
+    return (
+        jsonify(
+            {
+                "user_id": user.user_id,
+                "username": user.username,
+                "email": user.email,
+                "password_hash": user.password_hash,
+            }
+        ),
+        200,
     )
 
 
@@ -125,16 +132,20 @@ def check_auth():
 @app.route("/api/users/<int:user_id>", methods=["PUT"])
 def update_user(user_id):
     data = request.json
+    user = None if data.get("username") == "" else data.get("username")
+    email = None if data.get("email") == "" else data.get("email")
+    pwd_hash = None if data.get("password") == "" else data.get("password")
     db.session.execute(
-        text("CALL UpdateUser(:user_id, :username, :email, @status)"),
+        text("CALL UpdateUser(:user_id, :username, :email, :password_hash, @status)"),
         {
             "user_id": user_id,
-            "username": data.get("username"),
-            "email": data.get("email"),
+            "username": user,
+            "email": email,
+            "password_hash": pwd_hash,
         },
     )
 
-    status = db.session.execute("SELECT @status").scalar()
+    status = db.session.execute(text("SELECT @status")).scalar()
     if status == 404:
         return jsonify({"error": "User not found"}), 404
     db.session.commit()
@@ -144,7 +155,7 @@ def update_user(user_id):
 @app.route("/api/users/<int:user_id>", methods=["DELETE"])
 def remove_user(user_id):
     db.session.execute(text("CALL RemoveUser(:user_id, @status)"), {"user_id": user_id})
-    status = db.session.execute("SELECT @status").scalar()
+    status = db.session.execute(text("SELECT @status")).scalar()
     if status == 404:
         return jsonify({"error": "User not found"}), 404
     db.session.commit()
@@ -244,7 +255,7 @@ def delete_photo(photo_id):
     db.session.execute(
         text("CALL DeletePhoto(:photo_id, @status)"), {"photo_id": photo_id}
     )
-    status = db.session.execute("SELECT @status").scalar()
+    status = db.session.execute(text("SELECT @status")).scalar()
     if status == 404:
         return jsonify({"error": "Photo not found"}), 404
     db.session.commit()
@@ -278,36 +289,39 @@ def remove_tag():
 
 @app.route("/api/photos/nearby", methods=["GET"])
 def get_nearby_photos():
-    data = request.json
-    result = db.session.execute(
-        text(
-            """
-        CALL GetNearbyPhotos(:latitude, :longitude, :radius)
-        """
-        ),
-        {
-            "latitude": data["latitude"],
-            "longitude": data["longitude"],
-            "radius": data["radius"],
-            # need to provide default val from flutter if no radius provided
-        },
-    )
+    latitude = request.args.get("latitude", type=float)
+    longitude = request.args.get("longitude", type=float)
+    radius = request.args.get("radius", default=10.0, type=float)
+    if latitude is None or longitude is None:
+        return jsonify({"error": "Latitude and longitude are required"}), 400
+    if radius < 0:
+        radius = 10
 
-    photos = result.fetchall()
-    return jsonify(
-        [
-            {
-                "photo_id": row[0],
-                "user_id": row[1],
-                "photo_url": row[2],
-                "latitude": float(row[3]),
-                "longitude": float(row[4]),
-                "timestamp": row[5].isoformat(),
-                "distance_km": float(row[6]),
-            }
-            for row in photos
-        ]
-    )
+    conn = db.engine.raw_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.callproc("GetNearbyPhotos", [latitude, longitude, radius])
+
+        results = []
+        for result in cursor.stored_results():
+            rows = result.fetchall()
+            for row in rows:
+                results.append(
+                    {
+                        "photo_id": row[0],
+                        "user_id": row[1],
+                        "photo_url": row[2],
+                        "latitude": float(row[3]),
+                        "longitude": float(row[4]),
+                        "timestamp": row[5].isoformat(),
+                        "distance_km": float(row[6]),
+                    }
+                )
+
+        return jsonify(results)
+    finally:
+        cursor.close()
+        conn.close()
 
 
 if __name__ == "__main__":

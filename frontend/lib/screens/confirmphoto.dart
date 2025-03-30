@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DisplayPictureScreen extends StatefulWidget {
   final String imagePath;
@@ -45,8 +46,10 @@ class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
       _message = null;
     });
 
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt('user_id');
+
     final uri = Uri.parse("http://10.0.2.2:5000/api/photos");
-    final userId = '1'; // TODO: Replace with actual user ID later
     Position? position = await _getCurrentPosition();
 
     if (position == null) {
@@ -58,7 +61,7 @@ class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
     }
 
     var request = http.MultipartRequest("POST", uri);
-    request.fields['user_id'] = userId;
+    request.fields['user_id'] = '$userId';
     request.fields['latitude'] = position.latitude.toString();
     request.fields['longitude'] = position.longitude.toString();
 

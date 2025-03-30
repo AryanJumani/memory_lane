@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import '../displayscreen.dart';
+import '../confirmphoto.dart';
 
 late List<CameraDescription> cameras;
 
@@ -67,7 +67,7 @@ class _CameraScreenState extends State<CameraScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Click Photot"),
+        title: Text("Click Photo"),
         backgroundColor: Theme.of(context).colorScheme.surface,
       ),
       body: FutureBuilder<void>(

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:trial_flutter/screens/widgets/filter.dart';
 import 'package:trial_flutter/screens/widgets/photo.dart';
-import 'display_photo.dart';
-import 'profile.dart';
+import 'widgets/display_photo.dart';
+import 'widgets/profile.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -13,6 +14,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<Widget> _pages = [
     DisplayPhoto(),
+    FilterScreen(),
     CameraScreen(),
     ProfileScreen(),
   ];
@@ -35,6 +37,10 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
             label: "Home",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.filter),
+            label: "Filter",
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.add),
