@@ -315,6 +315,7 @@ def get_nearby_photos():
                         "longitude": float(row[4]),
                         "timestamp": row[5].isoformat(),
                         "distance_km": float(row[6]),
+                        "username": row[7],
                     }
                 )
 
@@ -324,5 +325,10 @@ def get_nearby_photos():
         conn.close()
 
 
+@app.route("/api/health")
+def health():
+    return {"status": "ok"}
+
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)

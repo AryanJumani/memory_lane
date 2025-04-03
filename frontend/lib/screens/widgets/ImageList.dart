@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:trial_flutter/constants.dart';
 import 'package:trial_flutter/screens/home.dart';
 import 'package:trial_flutter/screens/widgets/dialog.dart';
+//import 'location.dart';
 
 class ImageCard extends StatefulWidget {
   final Map<String, dynamic> photo;
@@ -17,6 +19,7 @@ class ImageCard extends StatefulWidget {
 }
 
 class _ImageCardState extends State<ImageCard> {
+  //String? _nearestLandmark;
   String _formatTimestamp(String iso) {
     try {
       final dt = DateTime.parse(iso);
@@ -26,8 +29,18 @@ class _ImageCardState extends State<ImageCard> {
     }
   }
 
+  /*Future<void> _fetchNearestLnadmark() async {
+    final latitude = widget.photo['latitude'];
+    final longitude = widget.photo['longitude'];
+    final landmark =
+        await LocationService.getNearestLandmark(latitude, longitude);
+    setState(() {
+      _nearestLandmark = landmark;
+    });
+  }*/
+
   Future<void> deletePhoto(BuildContext context, int photoId) async {
-    final uri = Uri.parse("http://10.0.2.2:5000/api/photos/$photoId");
+    final uri = Uri.parse("$BASE_URL/api/photos/$photoId");
     final response = await http.delete(uri);
 
     if (response.statusCode == 200) {
@@ -101,7 +114,7 @@ class _ImageCardState extends State<ImageCard> {
             Text(
               "${photo["latitude"]}, ${photo["longitude"]}",
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 12,
                 color: Theme.of(context).colorScheme.secondary,
               ),
             ),
@@ -111,7 +124,7 @@ class _ImageCardState extends State<ImageCard> {
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Image.network(
-                "http://10.0.2.2:5000/${photo['photo_url']}",
+                "$BASE_URL/${photo['photo_url']}",
                 height: 300,
                 width: double.infinity,
                 fit: BoxFit.contain,

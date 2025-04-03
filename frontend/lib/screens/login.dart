@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trial_flutter/constants.dart';
 
 import 'register.dart';
 import 'home.dart';
@@ -17,8 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   String _message = '';
   Future<void> login() async {
     final response = await http.post(
-      Uri.parse(
-          'http://10.0.2.2:5000/api/login'), // logs in for now. needs to store to session later (part 3)
+      Uri.parse('$BASE_URL/api/login'),
       headers: {
         'Content-Type': 'application/json'
       }, // needed to pass json apparently

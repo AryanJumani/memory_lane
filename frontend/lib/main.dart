@@ -3,12 +3,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trial_flutter/screens/home.dart';
 import 'theme.dart';
 import 'screens/login.dart';
+//import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final prefs = await SharedPreferences.getInstance();
   final userId = prefs.getInt('user_id');
+  //await dotenv.load(fileName: ".env");
 
   runApp(MyApp(isLoggedIn: userId != null));
 }

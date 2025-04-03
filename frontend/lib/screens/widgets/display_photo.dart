@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'ImageList.dart';
+import 'package:trial_flutter/constants.dart';
 
 class DisplayPhoto extends StatefulWidget {
   const DisplayPhoto({super.key});
@@ -37,7 +38,7 @@ class _DisplayPhotoState extends State<DisplayPhoto> {
   }
 
   Future<List<Map<String, dynamic>>> getPhotos(String userId) async {
-    final uri = Uri.parse("http://10.0.2.2:5000/api/photos/user/$userId");
+    final uri = Uri.parse("$BASE_URL/api/photos/user/$userId");
     try {
       final response = await http.get(uri);
       if (response.statusCode == 200) {

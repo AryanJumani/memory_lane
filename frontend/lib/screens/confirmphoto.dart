@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trial_flutter/constants.dart';
 
 class DisplayPictureScreen extends StatefulWidget {
   final String imagePath;
@@ -49,7 +50,7 @@ class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getInt('user_id');
 
-    final uri = Uri.parse("http://10.0.2.2:5000/api/photos");
+    final uri = Uri.parse("$BASE_URL/api/photos");
     Position? position = await _getCurrentPosition();
 
     if (position == null) {

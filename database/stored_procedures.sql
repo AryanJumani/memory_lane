@@ -8,7 +8,11 @@ END //
 DELIMITER ;
 
 DELIMITER //
-CREATE PROCEDURE UpdateUser(IN p_user_id INT, IN p_username VARCHAR(50), IN p_email VARCHAR(100), IN p_password_hash VARCHAR(255), OUT p_status INT)
+CREATE PROCEDURE UpdateUser(IN p_user_id INT,
+IN p_username VARCHAR(50),
+IN p_email VARCHAR(100),
+IN p_password_hash VARCHAR(255),
+OUT p_status INT)
 BEGIN
 	IF EXISTS(SELECT 1 FROM Users WHERE user_id = p_user_id) THEN
 		IF p_username IS NOT NULL THEN
@@ -101,10 +105,10 @@ DELIMITER //
 CREATE PROCEDURE GetNearbyPhotos(IN p_latitude DECIMAL(9, 6), IN p_longitude DECIMAL(9, 6), IN p_radius_km DECIMAL(9, 2))
 BEGIN
 	DECLARE haversine DECIMAL(9, 6);
-	SELECT photo_id, user_id, photo_url, latitude, longitude, timestamp,
+	SELECT photo_id, Photos.user_id, photo_url, latitude, longitude, timestamp,
 	2 * 6367 * ASIN(SQRT((1 - COS(RADIANS(p_latitude) - RADIANS(latitude)) + COS(p_latitude) * COS(latitude) * (1 - COS(RADIANS(p_longitude) - RADIANS(longitude)))) / 2))
-	AS distance_km
-	FROM Photos
+	AS distance_km, username
+	FROM Photos JOIN Users ON Users.user_id = Photos.user_id
 	HAVING distance_km <= p_radius_km
 	ORDER BY distance_km;
 END //

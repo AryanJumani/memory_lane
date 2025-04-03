@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trial_flutter/constants.dart';
 import 'package:trial_flutter/screens/login.dart';
 import 'package:trial_flutter/screens/widgets/dialog.dart';
 
@@ -31,7 +32,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> deleteAccount() async {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getInt('user_id');
-    final uri = Uri.parse("http://10.0.2.2:5000/api/users/$userId");
+    final uri = Uri.parse("$BASE_URL/api/users/$userId");
     final response = await http.delete(uri);
     if (response.statusCode == 200) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -51,9 +52,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<Map<String, dynamic>> getUserData() async {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getInt('user_id');
-    final uri = Uri.parse("http://10.0.2.2:5000/api/users/$userId");
+    final uri = Uri.parse("$BASE_URL/api/users/$userId");
     final response = await http.get(uri);
-    print("res body: " + response.body);
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
@@ -72,7 +72,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getInt('user_id');
-    final uri = Uri.parse("http://10.0.2.2:5000/api/users/$userId");
+    final uri = Uri.parse("$BASE_URL/api/users/$userId");
     final response = await http.put(
       uri,
       headers: {'Content-Type': 'application/json'},
@@ -106,7 +106,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getInt('user_id');
-    final uri = Uri.parse("http://10.0.2.2:5000/api/users/$userId");
+    final uri = Uri.parse("$BASE_URL/api/users/$userId");
     final response = await http.put(
       uri,
       headers: {'Content-Type': 'application/json'},
@@ -140,7 +140,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getInt('user_id');
-    final uri = Uri.parse("http://10.0.2.2:5000/api/users/$userId");
+    final uri = Uri.parse("$BASE_URL/api/users/$userId");
     final response = await http.put(
       uri,
       headers: {'Content-Type': 'application/json'},
