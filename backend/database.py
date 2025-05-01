@@ -18,6 +18,7 @@ class Photos(db.Model):
     photo_url = db.Column(db.String(255), nullable=False)
     latitude = db.Column(db.Numeric(9, 6))
     longitude = db.Column(db.Numeric(9, 6))
+    landmark = db.Column(db.String(255))
     timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
 
 

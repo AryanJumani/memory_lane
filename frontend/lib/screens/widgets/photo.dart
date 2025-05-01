@@ -28,6 +28,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
       _controller = CameraController(camera, ResolutionPreset.medium);
       _initializeControllerFuture = _controller.initialize();
+      await _initializeControllerFuture;
 
       if (mounted) setState(() {});
     } catch (e) {

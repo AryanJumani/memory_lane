@@ -15,6 +15,7 @@ CREATE TABLE Photos (
     photo_url VARCHAR(255) NOT NULL,
     latitude DECIMAL(9,6),
     longitude DECIMAL(9,6),
+    landmark VARCHAR(255),
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
 );

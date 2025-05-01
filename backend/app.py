@@ -5,6 +5,8 @@ from flask_session import Session
 import os
 from dotenv import load_dotenv
 from sqlalchemy import text
+import requests
+
 
 load_dotenv()
 
@@ -60,16 +62,19 @@ def upload_photo():
 
     if not user_id or not photo_file:
         return jsonify({"error": "Missing user ID or photo file"}), 400
+    landmark_info = get_closest_landmark(latitude, longitude)
+    landmark = landmark_info.get("landmark", None)
     filename = f"user_{user_id}_{photo_file.filename}"
     filepath = os.path.join("uploads", filename)
     photo_file.save(filepath)
     db.session.execute(
-        text("CALL UploadPhoto(:user_id, :photo_url, :latitude, :longitude)"),
+        text("CALL UploadPhoto(:user_id, :photo_url, :latitude, :longitude, :landmark)"),
         {
             "user_id": user_id,
             "photo_url": filepath,
             "latitude": latitude,
             "longitude": longitude,
+            "landmark": landmark,
         },
     )
     db.session.commit()
@@ -231,6 +236,7 @@ def get_photos_of_user(user_id):
                 "photo_url": p.photo_url,
                 "latitude": float(p.latitude) if p.latitude else None,
                 "longitude": float(p.longitude) if p.longitude else None,
+                "landmark": p.landmark,
                 "timestamp": p.timestamp.isoformat(),
                 "username": u.username,
             }
@@ -241,14 +247,28 @@ def get_photos_of_user(user_id):
 
 @app.route("/api/tags/<int:photo_id>", methods=["GET"])
 def get_tags_of_photo(photo_id):
-    tags = Tags.query.filter_by(photo_id=photo_id).all()
-    if not tags:
-        return jsonify({"message": "No tags found for this photo."}), 200
-
-    return jsonify(
-        [{"photo_id": t.photo_id, "tagged_user": t.tagged_user} for t in tags]
+    tags = (
+        db.session.query(Tags, Users.username)
+        .join(Users, Tags.tagged_user == Users.user_id)
+        .filter(Tags.photo_id == photo_id)
+        .all()
     )
+    return jsonify([
+        {"username": username, "photo_id": t.photo_id}
+        for t, username in tags
+    ])
 
+@app.route("/api/users/lookup", methods=["GET"])
+def lookup_user():
+    username = request.args.get("username")
+    if not username:
+        return jsonify({"error": "Missing username"}), 400
+
+    user = Users.query.filter(Users.username==username.strip()).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    return jsonify({"user_id": user.user_id, "username": user.username}), 200
 
 @app.route("/api/photos/<int:photo_id>", methods=["DELETE"])
 def delete_photo(photo_id):
@@ -316,6 +336,7 @@ def get_nearby_photos():
                         "timestamp": row[5].isoformat(),
                         "distance_km": float(row[6]),
                         "username": row[7],
+                        "landmark": row[8],
                     }
                 )
 
@@ -328,6 +349,27 @@ def get_nearby_photos():
 @app.route("/api/health")
 def health():
     return {"status": "ok"}
+
+def get_closest_landmark(lat, long):
+    try:
+        username = os.getenv("GEONAMES_USERNAME")
+        if not username:
+            print("❌ GEONAMES_USERNAME not set in .env")
+            return {"landmark": None}
+        url = f"http://api.geonames.org/findNearbyWikipediaJSON?lat={lat}&lng={long}&username={username}"
+        response = requests.get(url, timeout=5)
+        if response.status_code != 200:
+            print(f"❌ GeoNames API error: {response.status_code}")
+            return {"landmark": None}
+        data = response.json()
+        if "geonames" in data and len(data["geonames"]) > 0:
+            return {"landmark": data["geonames"][0]["title"]}
+
+        return {"landmark": None}
+    except Exception as e:
+        print("⚠️ Error in get_closest_landmark:", e)
+        return {"landmark": None}
+
 
 
 if __name__ == "__main__":

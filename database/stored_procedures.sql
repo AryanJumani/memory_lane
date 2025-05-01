@@ -44,9 +44,9 @@ END //
 DELIMITER ;
 
 DELIMITER //
-CREATE PROCEDURE UploadPhoto(IN p_user_id INT, IN p_photo_url VARCHAR(255), IN p_latitude DECIMAL(9,6), IN p_longitude DECIMAL(9,6))
+CREATE PROCEDURE UploadPhoto(IN p_user_id INT, IN p_photo_url VARCHAR(255), IN p_latitude DECIMAL(9,6), IN p_longitude DECIMAL(9,6), IN p_landmark VARCHAR(255))
 BEGIN
-    INSERT INTO Photos (user_id, photo_url, latitude, longitude, timestamp) VALUES (p_user_id, p_photo_url, p_latitude, p_longitude, NOW());
+    INSERT INTO Photos (user_id, photo_url, latitude, longitude, landmark, timestamp) VALUES (p_user_id, p_photo_url, p_latitude, p_longitude, p_landmark, NOW());
 END //
 DELIMITER ;
 
@@ -107,7 +107,7 @@ BEGIN
 	DECLARE haversine DECIMAL(9, 6);
 	SELECT photo_id, Photos.user_id, photo_url, latitude, longitude, timestamp,
 	2 * 6367 * ASIN(SQRT((1 - COS(RADIANS(p_latitude) - RADIANS(latitude)) + COS(p_latitude) * COS(latitude) * (1 - COS(RADIANS(p_longitude) - RADIANS(longitude)))) / 2))
-	AS distance_km, username
+	AS distance_km, username, landmark
 	FROM Photos JOIN Users ON Users.user_id = Photos.user_id
 	HAVING distance_km <= p_radius_km
 	ORDER BY distance_km;

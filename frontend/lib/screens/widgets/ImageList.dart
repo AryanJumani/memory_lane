@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:trial_flutter/constants.dart';
 import 'package:trial_flutter/screens/home.dart';
 import 'package:trial_flutter/screens/widgets/dialog.dart';
-//import 'location.dart';
+import 'dart:convert';
 
 class ImageCard extends StatefulWidget {
   final Map<String, dynamic> photo;
@@ -53,6 +53,17 @@ class _ImageCardState extends State<ImageCard> {
         SnackBar(content: Text("❌ Unable to delete photo")),
       );
     }
+  }
+
+  Future<List<String>> fetchTaggedUsernames(int photoId) async {
+    final uri = Uri.parse("$BASE_URL/api/tags/$photoId");
+    final response = await http.get(uri);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return List<String>.from(data.map((tag) => tag["username"]));
+    }
+    return [];
   }
 
   String month(int m) {
@@ -112,7 +123,7 @@ class _ImageCardState extends State<ImageCard> {
             // Location
             SizedBox(height: 2),
             Text(
-              "${photo["latitude"]}, ${photo["longitude"]}",
+              "${photo["landmark"]}",
               style: TextStyle(
                 fontSize: 12,
                 color: Theme.of(context).colorScheme.secondary,
@@ -139,6 +150,29 @@ class _ImageCardState extends State<ImageCard> {
                 fontSize: 12,
                 color: Theme.of(context).colorScheme.secondary,
               ),
+            ),
+            FutureBuilder<List<String>>(
+              future: fetchTaggedUsernames(photo["photo_id"]),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return SizedBox.shrink();
+                }
+
+                final taggedUsernames = snapshot.data!;
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Wrap(
+                    spacing: 6,
+                    children: taggedUsernames.map((username) {
+                      return Chip(
+                        label: Text("@$username"),
+                        backgroundColor:
+                            Theme.of(context).colorScheme.surfaceVariant,
+                      );
+                    }).toList(),
+                  ),
+                );
+              },
             ),
           ],
         ),

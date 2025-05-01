@@ -5,6 +5,7 @@ import 'package:path/path.dart' as path;
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trial_flutter/constants.dart';
+import 'dart:convert';
 
 class DisplayPictureScreen extends StatefulWidget {
   final String imagePath;
@@ -18,6 +19,8 @@ class DisplayPictureScreen extends StatefulWidget {
 class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
   String? _message;
   bool _isUploading = false;
+  final TextEditingController _taggedController = TextEditingController();
+  final List<String> _taggedUsernames = [];
 
   Future<Position?> _getCurrentPosition() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -39,6 +42,18 @@ class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
 
     return await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high);
+  }
+
+  void _handleTagInput(String value) {
+    if (value.endsWith(' ')) {
+      final username = value.trim();
+      if (username.isNotEmpty && !_taggedUsernames.contains(username)) {
+        setState(() {
+          _taggedUsernames.add(username);
+        });
+      }
+      _taggedController.clear();
+    }
   }
 
   Future<void> uploadPhoto() async {
@@ -78,14 +93,44 @@ class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
       setState(() => _isUploading = false);
 
       if (response.statusCode == 201) {
+        final photoResp =
+            await http.get(Uri.parse("$BASE_URL/api/photos/user/$userId"));
+
+        if (photoResp.statusCode == 200) {
+          final photos =
+              List<Map<String, dynamic>>.from(jsonDecode(photoResp.body));
+          final latestPhotoId = photos.last["photo_id"];
+
+          for (final username in _taggedUsernames) {
+            final lookupResp = await http.get(
+              Uri.parse("$BASE_URL/api/users/lookup?username=$username"),
+            );
+
+            if (lookupResp.statusCode == 200) {
+              final lookupData = jsonDecode(lookupResp.body);
+              final tagUserId = lookupData["user_id"];
+
+              await http.post(
+                Uri.parse("$BASE_URL/api/tags"),
+                headers: {"Content-Type": "application/json"},
+                body: jsonEncode({
+                  "photo_id": latestPhotoId,
+                  "tagged_user": tagUserId,
+                }),
+              );
+            } else {
+              setState(() {
+                _message =
+                    "Tag failed. Could not find user $username, but photo was uploaded.";
+              });
+            }
+          }
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("✅ Photo uploaded!")),
         );
         Navigator.pop(context);
-      } else {
-        setState(() {
-          _message = "Upload failed. (${response.statusCode})";
-        });
       }
     } catch (e) {
       setState(() {
@@ -102,6 +147,38 @@ class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
       body: Column(
         children: [
           Expanded(child: Image.file(File(widget.imagePath))),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  children: _taggedUsernames
+                      .map(
+                        (username) => Chip(
+                          label: Text(username),
+                          onDeleted: () {
+                            setState(() {
+                              _taggedUsernames.remove(username);
+                            });
+                          },
+                        ),
+                      )
+                      .toList(),
+                ),
+                SizedBox(height: 8),
+                TextField(
+                  controller: _taggedController,
+                  decoration: InputDecoration(
+                    labelText: "Tag users (press space to add)",
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: _handleTagInput,
+                ),
+              ],
+            ),
+          ),
           if (_isUploading) CircularProgressIndicator(),
           if (_message != null)
             Padding(
