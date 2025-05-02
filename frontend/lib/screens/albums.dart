@@ -67,7 +67,7 @@ class _AlbumPageState extends State<AlbumPage> {
                 alignment: Alignment.bottomLeft,
                 children: [
                   Image.network(
-                    "$BASE_URL/${firstPhoto['photo_url']}",
+                    "${firstPhoto['photo_url']}",
                     height: 200,
                     width: double.infinity,
                     fit: BoxFit.cover,

@@ -1,0 +1,20 @@
+{
+  "buildFiles": [
+    "/Users/ajgamergrenade/Downloads/flutter/packages/flutter_tools/gradle/src/main/groovy/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/ajgamergrenade/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/ajgamergrenade/Desktop/Purdue/cs348/cs348project/frontend/android/app/.cxx/RelWithDebInfo/533gf4k3/x86",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/ajgamergrenade/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/ajgamergrenade/Desktop/Purdue/cs348/cs348project/frontend/android/app/.cxx/RelWithDebInfo/533gf4k3/x86",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {}
+}

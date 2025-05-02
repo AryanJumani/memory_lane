@@ -151,7 +151,7 @@ class _ImageCardState extends State<ImageCard> {
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Image.network(
-                "$BASE_URL/${photo['photo_url']}",
+                "${photo['photo_url']}",
                 height: 300,
                 width: double.infinity,
                 fit: BoxFit.contain,

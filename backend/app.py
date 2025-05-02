@@ -1,28 +1,55 @@
-from flask import Flask, jsonify, request, session, send_from_directory
+from flask import Flask, jsonify, request, session, redirect
 from flask_cors import CORS
 from database import db, Users, Photos, Comments, Tags
-from flask_session import Session
-import os
-from dotenv import load_dotenv
+from google.cloud.sql.connector import Connector
+from google.cloud import storage
 from sqlalchemy import text
-import requests
+import pymysql, os, requests
 
+connector = Connector()
 
-load_dotenv()
+def get_connection() -> pymysql.connections.Connection:
+    return connector.connect(
+        "memorylane-458602:us-central1:cs348-proj",
+        "pymysql",
+        user="root",
+        password="Easybell1!",
+        db="memory_lane",
+    )
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
 
-app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
+app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://"
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "creator": get_connection,   # <─ hands SQLAlchemy a live pymysql conn
+    "pool_size":     5,
+    "max_overflow":  2,
+    "pool_timeout":  30,
+    "pool_recycle":  1800,
+}
+app.secret_key = os.environ.get("SECRET_KEY", "supersecretkey")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-app.config["SESSION_TYPE"] = "filesystem"
-app.config["SESSION_PERMANENT"] = False
-app.config["SESSION_USE_SIGNER"] = True
-app.config["SECRET_KEY"] = "supersecretkey"
 db.init_app(app)
-Session(app)
 
+
+def upload_to_gcs(photo_file, filename):
+    bucket_name = os.environ.get("GCS_BUCKET")
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(filename)
+    blob.upload_from_file(photo_file, content_type=photo_file.content_type)
+    #blob.make_public()
+    return blob.public_url
+
+@app.route("/api/test_db")
+def test_db():
+    try:
+        db.session.execute(text("SELECT 1"))
+        return {"db": "connected"}
+    except Exception as e:
+        return {"error": str(e)}, 500
 
 @app.route("/api/users", methods=["GET"])
 def get_users():
@@ -65,13 +92,12 @@ def upload_photo():
     landmark_info = get_closest_landmark(latitude, longitude)
     landmark = landmark_info.get("landmark", None)
     filename = f"user_{user_id}_{photo_file.filename}"
-    filepath = os.path.join("uploads", filename)
-    photo_file.save(filepath)
+    photo_url = upload_to_gcs(photo_file, filename)
     db.session.execute(
         text("CALL UploadPhoto(:user_id, :photo_url, :latitude, :longitude, :landmark)"),
         {
             "user_id": user_id,
-            "photo_url": filepath,
+            "photo_url": photo_url,
             "latitude": latitude,
             "longitude": longitude,
             "landmark": landmark,
@@ -219,7 +245,13 @@ def get_comments_of_photo(photo_id):
 
 @app.route("/uploads/<path:filename>")
 def get_photo(filename):
-    return send_from_directory("uploads", filename)
+    bucket_name = os.environ.get("GCS_BUCKET")
+    if not bucket_name:
+        return jsonify({"error": "GCS_BUCKET not set"}), 500
+
+    gcs_url = f"https://storage.googleapis.com/{bucket_name}/{filename}"
+    return redirect(gcs_url, code=302)
+
 
 
 @app.route("/api/photos/user/<int:user_id>", methods=["GET"])
@@ -326,23 +358,22 @@ def get_nearby_photos():
         cursor = conn.cursor()
         cursor.callproc("GetNearbyPhotos", [latitude, longitude, radius])
 
+        rows = cursor.fetchall()  # just use this directly
         results = []
-        for result in cursor.stored_results():
-            rows = result.fetchall()
-            for row in rows:
-                results.append(
-                    {
-                        "photo_id": row[0],
-                        "user_id": row[1],
-                        "photo_url": row[2],
-                        "latitude": float(row[3]),
-                        "longitude": float(row[4]),
-                        "timestamp": row[5].isoformat(),
-                        "distance_km": float(row[6]),
-                        "username": row[7],
-                        "landmark": row[8],
-                    }
-                )
+        for row in rows:
+            results.append(
+                {
+                    "photo_id": row[0],
+                    "user_id": row[1],
+                    "photo_url": row[2],
+                    "latitude": float(row[3]),
+                    "longitude": float(row[4]),
+                    "timestamp": row[5].isoformat(),
+                    "distance_km": float(row[6]),
+                    "username": row[7],
+                    "landmark": row[8],
+                }
+            )
 
         return jsonify(results)
     finally:
@@ -356,7 +387,7 @@ def health():
 
 def get_closest_landmark(lat, long):
     try:
-        username = os.getenv("GEONAMES_USERNAME")
+        username = os.environ.get("GEONAMES_USERNAME")
         if not username:
             print("❌ GEONAMES_USERNAME not set in .env")
             return {"landmark": None}

@@ -1,1 +1,1 @@
-const String BASE_URL = 'http://10.0.2.2:5000';
+const String BASE_URL = 'https://memorylane-458602.uc.r.appspot.com';

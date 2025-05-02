@@ -6,6 +6,7 @@ db = SQLAlchemy()
 
 
 class Users(db.Model):
+    __tablename__ = "Users"
     user_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
@@ -13,6 +14,7 @@ class Users(db.Model):
 
 
 class Photos(db.Model):
+    __tablename__ = "Photos"
     photo_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.user_id"), nullable=False)
     photo_url = db.Column(db.String(255), nullable=False)
@@ -23,6 +25,7 @@ class Photos(db.Model):
 
 
 class Comments(db.Model):
+    __tablename__ = "Comments"
     comment_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     photo_id = db.Column(db.Integer, db.ForeignKey("photo.photo_id"), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("user.user_id"), nullable=False)
@@ -31,5 +34,6 @@ class Comments(db.Model):
 
 
 class Tags(db.Model):
+    __tablename__ = "Tags"
     photo_id = db.Column(db.Integer, db.ForeignKey("photo.photo_id"), primary_key=True)
     tagged_user = db.Column(db.Integer, db.ForeignKey("user.user_id"), primary_key=True)

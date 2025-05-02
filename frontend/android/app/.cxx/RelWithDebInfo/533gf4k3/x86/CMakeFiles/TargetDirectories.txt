@@ -1,0 +1,2 @@
+/Users/ajgamergrenade/Desktop/Purdue/cs348/cs348project/frontend/android/app/.cxx/RelWithDebInfo/533gf4k3/x86/CMakeFiles/edit_cache.dir
+/Users/ajgamergrenade/Desktop/Purdue/cs348/cs348project/frontend/android/app/.cxx/RelWithDebInfo/533gf4k3/x86/CMakeFiles/rebuild_cache.dir

@@ -24,7 +24,7 @@ class AlbumView extends StatelessWidget {
           return ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Image.network(
-              "$BASE_URL/${photo['photo_url']}",
+              "${photo['photo_url']}",
               fit: BoxFit.cover,
             ),
           );

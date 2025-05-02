@@ -99,7 +99,8 @@ class _FilterScreenState extends State<FilterScreen> {
       } else {
         setState(() {
           _photos = [];
-          _message = "Failed to load photos.";
+          _message =
+              "Failed to load photos. Status code: ${response.statusCode} ${response.body}";
         });
       }
     } catch (e) {

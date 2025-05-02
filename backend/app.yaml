@@ -1,0 +1,9 @@
+runtime: python312
+entrypoint: gunicorn -b :$PORT -w 2 --timeout 60 app:app
+
+beta_settings:
+  cloud_sql_instances: memorylane-458602:us-central1:cs348-proj
+
+env_variables:
+  GEONAMES_USERNAME: "ajumani"
+  GCS_BUCKET: "mem_lane-testing"
