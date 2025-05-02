@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trial_flutter/constants.dart';
 import 'package:trial_flutter/screens/home.dart';
 import 'package:trial_flutter/screens/widgets/dialog.dart';
@@ -19,6 +20,8 @@ class ImageCard extends StatefulWidget {
 }
 
 class _ImageCardState extends State<ImageCard> {
+  final _commentController = TextEditingController();
+
   //String? _nearestLandmark;
   String _formatTimestamp(String iso) {
     try {
@@ -53,6 +56,19 @@ class _ImageCardState extends State<ImageCard> {
         SnackBar(content: Text("❌ Unable to delete photo")),
       );
     }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchComments(int photoId) async {
+    final uri = Uri.parse("$BASE_URL/api/comments/$photoId");
+    final response = await http.get(uri);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data is List) {
+        return List<Map<String, dynamic>>.from(data);
+      }
+    }
+    return [];
   }
 
   Future<List<String>> fetchTaggedUsernames(int photoId) async {
@@ -173,6 +189,60 @@ class _ImageCardState extends State<ImageCard> {
                   ),
                 );
               },
+            ),
+            FutureBuilder(
+              future: fetchComments(widget.photo["photo_id"]),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return SizedBox.shrink();
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: 6),
+                    Text("Comments:",
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    ...snapshot.data!.map((c) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Text("${c["username"]}: ${c["comment"]}"),
+                        )),
+                  ],
+                );
+              },
+            ),
+            SizedBox(height: 8),
+            TextField(
+              controller: _commentController,
+              decoration: InputDecoration(
+                hintText: "Add a comment...",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton(
+                onPressed: () async {
+                  final comment = _commentController.text.trim();
+                  if (comment.isEmpty) return;
+                  final prefs = await SharedPreferences.getInstance();
+                  final userId = prefs.getInt("user_id");
+
+                  await http.post(
+                    Uri.parse("$BASE_URL/api/comments"),
+                    headers: {"Content-Type": "application/json"},
+                    body: jsonEncode({
+                      "photo_id": widget.photo["photo_id"],
+                      "user_id": userId,
+                      "comment": comment,
+                    }),
+                  );
+                  _commentController.clear();
+                  setState(() {});
+                },
+                child: Text("Post"),
+              ),
             ),
           ],
         ),

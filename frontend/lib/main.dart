@@ -10,6 +10,7 @@ void main() async {
 
   final prefs = await SharedPreferences.getInstance();
   final userId = prefs.getInt('user_id');
+  //prefs.remove('user_id');
   //await dotenv.load(fileName: ".env");
 
   runApp(MyApp(isLoggedIn: userId != null));

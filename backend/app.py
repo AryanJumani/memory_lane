@@ -196,21 +196,25 @@ def remove_comment(comment_id):
 
 @app.route("/api/comments/<int:photo_id>", methods=["GET"])
 def get_comments_of_photo(photo_id):
-    comments = Comments.query.filter_by(photo_id=photo_id).all()
-    if not comments:
-        return jsonify({"message": "No comments found for this photo."}), 200
-
-    return jsonify(
-        [
-            {
-                "comment_id": c.comment_id,
-                "user_id": c.user_id,
-                "comment": c.comment,
-                "timestamp": c.timestamp,
-            }
-            for c in comments
-        ]
+    comments = (
+        db.session.query(Comments, Users.username)
+        .join(Users, Comments.user_id == Users.user_id)
+        .filter(Comments.photo_id == photo_id)
+        .order_by(Comments.timestamp.asc())
+        .all()
     )
+
+    return jsonify([
+        {
+            "comment_id": c.comment_id,
+            "user_id": c.user_id,
+            "username": username,
+            "comment": c.comment,
+            "timestamp": c.timestamp.isoformat(),
+        }
+        for c, username in comments
+    ])
+
 
 
 @app.route("/uploads/<path:filename>")
