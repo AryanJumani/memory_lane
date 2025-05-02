@@ -2,8 +2,12 @@ USE `memory_lane`;
 DELIMITER //
 CREATE PROCEDURE AddUser(IN p_username VARCHAR(50), IN p_email VARCHAR(100), IN p_password_hash VARCHAR(255))
 BEGIN
+	DECLARE EXIT HANDLER FOR sqlexception ROLLBACK;
+    SET TRANSACTION isolation level REPEATABLE READ;
+    START TRANSACTION;
     INSERT INTO Users (username, email, password_hash)
     VALUES (p_username, p_email, p_password_hash);
+    COMMIT;
 END //
 DELIMITER ;
 
@@ -14,6 +18,12 @@ IN p_email VARCHAR(100),
 IN p_password_hash VARCHAR(255),
 OUT p_status INT)
 BEGIN
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN ROLLBACK;
+	SET p_status = 500;
+	END;
+    SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+	START TRANSACTION;
 	IF EXISTS(SELECT 1 FROM Users WHERE user_id = p_user_id) THEN
 		IF p_username IS NOT NULL THEN
 			UPDATE Users SET username = p_username WHERE user_id = p_user_id;
@@ -28,37 +38,58 @@ BEGIN
 	ELSE
 		SET p_status = 404;
 	END IF;
+    COMMIT;
+
 END //
 DELIMITER ;
 
 DELIMITER //
 CREATE PROCEDURE RemoveUser(IN p_user_id INT, OUT p_status INT)
 BEGIN
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN ROLLBACK;
+	SET p_status = 500;
+	END;
+    SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+	START TRANSACTION;
+
 	IF EXISTS (SELECT 1 FROM Users WHERE user_id = p_user_id) THEN
 		DELETE FROM Users WHERE user_id = p_user_id;
         SET p_status = 200;
 	ELSE
 		SET p_status = 404;
 	END IF;
+    COMMIT;
 END //
 DELIMITER ;
 
 DELIMITER //
 CREATE PROCEDURE UploadPhoto(IN p_user_id INT, IN p_photo_url VARCHAR(255), IN p_latitude DECIMAL(9,6), IN p_longitude DECIMAL(9,6), IN p_landmark VARCHAR(255))
 BEGIN
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION ROLLBACK;
+    SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+	START TRANSACTION;
     INSERT INTO Photos (user_id, photo_url, latitude, longitude, landmark, timestamp) VALUES (p_user_id, p_photo_url, p_latitude, p_longitude, p_landmark, NOW());
+	COMMIT;
 END //
 DELIMITER ;
 
 DELIMITER //
 CREATE PROCEDURE DeletePhoto(IN p_photo_id INT, OUT p_status INT)
 BEGIN
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN ROLLBACK;
+	SET p_status = 500;
+	END;
+    SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+	START TRANSACTION;
 	IF EXISTS(SELECT 1 FROM Photos WHERE photo_id = p_photo_id) THEN
 		DELETE FROM Photos WHERE photo_id = p_photo_id;
         SET p_status = 200;
 	ELSE
 		SET p_status = 404;
 	END IF;
+    COMMIT;
 END //
 DELIMITER ;
 
